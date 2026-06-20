@@ -1,0 +1,131 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum Metier {
+  SERRURIER
+  PLOMBIER
+  ELECTRICIEN
+  GARAGE
+  CHAUFFAGISTE
+}
+
+enum Plan {
+  MENSUEL
+  ANNUEL
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+}
+
+enum PaymentType {
+  SETUP_FEE
+  SUBSCRIPTION
+}
+
+// ─── Models ───────────────────────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  prenom        String
+  nom           String
+  email         String    @unique
+  passwordHash  String
+  telephone     String?
+  role          Role      @default(USER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  businessProfile BusinessProfile?
+  subscriptions   Subscription[]
+  payments        Payment[]
+  failedPayments  FailedPayment[]
+  logs            Log[]
+}
+
+model BusinessProfile {
+  id                   String   @id @default(cuid())
+  userId               String   @unique
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nomEntreprise        String
+  siret                String
+  metier               Metier
+  zoneIntervention     String
+  horaires             String
+  tarifs               String
+  telephoneATransferer String
+
+  aiSecretaryConfig AISecretaryConfig?
+}
+
+model AISecretaryConfig {
+  id                String          @id @default(cuid())
+  businessProfileId String          @unique
+  businessProfile   BusinessProfile @relation(fields: [businessProfileId], references: [id], onDelete: Cascade)
+  consignes         String
+  messageAccueil    String
+  isActive          Boolean         @default(true)
+}
+
+model Subscription {
+  id                   String             @id @default(cuid())
+  userId               String
+  user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stripeCustomerId     String
+  stripeSubscriptionId String
+  plan                 Plan
+  status               SubscriptionStatus @default(TRIALING)
+  trialEndsAt          DateTime?
+  currentPeriodEnd     DateTime
+  setupFeePaid         Boolean            @default(false)
+}
+
+model Payment {
+  id              String      @id @default(cuid())
+  userId          String
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stripePaymentId String
+  montant         Float
+  type            PaymentType
+  status          String
+  createdAt       DateTime    @default(now())
+}
+
+model FailedPayment {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stripeInvoiceId String
+  montant        Float
+  relances       Int      @default(0)
+  resolved       Boolean  @default(false)
+  createdAt      DateTime @default(now())
+}
+
+model Log {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action    String
+  details   Json?
+  createdAt DateTime @default(now())
+}
