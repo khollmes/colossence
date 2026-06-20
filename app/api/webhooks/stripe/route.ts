@@ -95,7 +95,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
   await prisma.payment.create({
     data: {
       userId,
-      stripePaymentId: session.payment_intent as string || session.id,
+      stripePaymentId: (session.payment_intent as string | null) ?? session.id,
       montant: 50,
       type: "SETUP_FEE",
       status: "succeeded",
@@ -169,7 +169,7 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
   await prisma.payment.create({
     data: {
       userId: subscription.userId,
-      stripePaymentId: invoice.payment_intent as string || invoice.id,
+      stripePaymentId: (invoice.payment_intent as string | null) ?? invoice.id,
       montant: (invoice.amount_paid || 0) / 100,
       type: "SUBSCRIPTION",
       status: "succeeded",
