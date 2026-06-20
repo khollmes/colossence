@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import stripe from "@/lib/stripe";
 import prisma from "@/lib/prisma";
+import { checkRateLimit, rateLimitResponse, getClientIp } from "@/lib/rateLimit";
 
 const PRICES: Record<string, { priceId: string }> = {
   MENSUEL: { priceId: process.env.STRIPE_PRICE_MENSUEL! },
@@ -10,6 +11,13 @@ const PRICES: Record<string, { priceId: string }> = {
 };
 
 export async function POST(req: NextRequest) {
+  // Rate limiting: 10 requêtes par minute par IP
+  const ip = getClientIp(req);
+  const { success } = checkRateLimit(`checkout:${ip}`);
+  if (!success) {
+    return rateLimitResponse();
+  }
+
   try {
     const session = await getServerSession(authOptions);
 
