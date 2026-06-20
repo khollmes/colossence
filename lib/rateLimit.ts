@@ -7,15 +7,15 @@ interface RateLimitEntry {
 
 const rateLimitMap = new Map<string, RateLimitEntry>();
 
-// Clean up expired entries periodically
-setInterval(() => {
+// Cleanup stale entries on-demand (serverless-friendly)
+function cleanupExpired() {
   const now = Date.now();
   for (const [key, entry] of rateLimitMap.entries()) {
     if (now > entry.resetAt) {
       rateLimitMap.delete(key);
     }
   }
-}, 60_000);
+}
 
 export interface RateLimitConfig {
   maxRequests: number;
@@ -31,6 +31,11 @@ export function checkRateLimit(
   identifier: string,
   config: RateLimitConfig = DEFAULT_CONFIG
 ): { success: boolean; remaining: number } {
+  // Clean up expired entries on-demand (serverless-friendly)
+  if (rateLimitMap.size > 1000) {
+    cleanupExpired();
+  }
+
   const now = Date.now();
   const entry = rateLimitMap.get(identifier);
 
