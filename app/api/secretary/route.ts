@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { syncSecretaryConfig } from "@/lib/syncServer";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -84,6 +85,11 @@ export async function PUT(req: NextRequest) {
         },
       });
     }
+
+    // Synchroniser vers le serveur externe
+    syncSecretaryConfig(userId).catch((err) =>
+      console.error("[Secretary] Erreur sync externe:", err)
+    );
 
     return NextResponse.json({ success: true });
   } catch (error) {

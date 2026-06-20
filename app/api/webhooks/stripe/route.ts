@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import stripe from "@/lib/stripe";
 import prisma from "@/lib/prisma";
 import { sendEmail, buildPaymentFailedEmail } from "@/lib/email";
+import { syncSubscriptionActivated, syncSubscriptionDeactivated } from "@/lib/syncServer";
 
 export async function POST(req: NextRequest) {
   const body = await req.text();
@@ -143,6 +144,17 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
     },
   });
 
+  // Synchroniser vers le serveur externe selon le changement de statut
+  if (newStatus === "ACTIVE") {
+    syncSubscriptionActivated(existing.userId).catch((err) =>
+      console.error("[Webhook] Erreur sync activation:", err)
+    );
+  } else if (newStatus === "PAST_DUE" || newStatus === "CANCELED") {
+    syncSubscriptionDeactivated(existing.userId, newStatus.toLowerCase()).catch((err) =>
+      console.error("[Webhook] Erreur sync désactivation:", err)
+    );
+  }
+
   await logEvent(existing.userId, "customer.subscription.updated", {
     stripeSubscriptionId,
     status: newStatus,
@@ -241,6 +253,11 @@ async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
     data: { status: "PAST_DUE" },
   });
 
+  // Synchroniser la désactivation vers le serveur externe
+  syncSubscriptionDeactivated(subscription.userId, "past_due").catch((err) =>
+    console.error("[Webhook] Erreur sync désactivation:", err)
+  );
+
   // Envoyer un email de notification
   const emailData = buildPaymentFailedEmail(
     subscription.user.prenom,
@@ -291,6 +308,11 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
     where: { id: existing.id },
     data: { status: "CANCELED" },
   });
+
+  // Synchroniser la désactivation vers le serveur externe
+  syncSubscriptionDeactivated(existing.userId, "canceled").catch((err) =>
+    console.error("[Webhook] Erreur sync désactivation:", err)
+  );
 
   // Désactiver le secrétariat IA
   const businessProfile = await prisma.businessProfile.findUnique({
