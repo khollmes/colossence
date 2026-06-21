@@ -18,7 +18,10 @@ Secrétariat IA pour artisans du dépannage (serruriers, plombiers, électricien
 ### 1. Connecter le repo GitHub
 
 1. Allez sur [vercel.com](https://vercel.com), créez un projet et importez le repo `khollmes/colossence`.
-2. Vercel détecte automatiquement Next.js et configure le build (`next build`).
+2. Vercel détecte automatiquement Next.js. **Avant de déployer**, configurez la commande de build :
+   - Dans **Vercel → Project → Settings → General → Build & Development Settings**
+   - **Build Command** : `prisma migrate deploy && next build`
+   - Cela exécute les migrations Prisma en production à chaque déploiement.
 
 ### 2. Variables d'environnement
 
@@ -43,7 +46,9 @@ Configurez les variables suivantes dans **Vercel → Project → Settings → En
 | `EMAIL_SERVER_PASSWORD` | Mot de passe SMTP / API key | `re_...` |
 | `EMAIL_FROM` | Adresse expéditeur | `Colossence <noreply@colossence.com>` |
 
-> ⚠️ **Sécurité** : Toutes les variables `STRIPE_SECRET_KEY`, `NEXTAUTH_SECRET`, `DATABASE_URL`, `EXTERNAL_SERVER_API_KEY` et `EMAIL_SERVER_PASSWORD` sont exclusivement côté serveur. Seule `STRIPE_PUBLISHABLE_KEY` peut être préfixée `NEXT_PUBLIC_` si nécessaire côté client.
+> ⚠️ **Sécurité** : Toutes ces variables sont exclusivement côté serveur (pas de préfixe `NEXT_PUBLIC_`). Copiez `.env.example` en `.env` pour le développement local.
+>
+> Pour générer `NEXTAUTH_SECRET` : `openssl rand -base64 32`
 
 ### 3. Connecter une base PostgreSQL
 
@@ -129,9 +134,11 @@ npm run dev
 ## Sécurité
 
 - Variables sensibles exclusivement côté serveur (jamais préfixées `NEXT_PUBLIC_`)
+- Headers HTTP de sécurité : `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `HSTS`, `Permissions-Policy`
 - Rate limiting sur `/api/register` et `/api/checkout` (10 requêtes/minute par IP)
+  - ⚠️ En serverless (Vercel), chaque instance a sa propre mémoire — la limite s'applique par instance. Pour une protection globale, migrer vers [Upstash Redis](https://github.com/upstash/ratelimit)
 - Mots de passe hashés avec bcrypt (12 rounds)
 - Sessions JWT signées avec `NEXTAUTH_SECRET`
-- Webhook Stripe vérifié par signature
+- Webhook Stripe vérifié par signature cryptographique (`STRIPE_WEBHOOK_SECRET`)
 - API externe protégée par clé API
 

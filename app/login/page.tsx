@@ -46,13 +46,13 @@ function LoginForm() {
 
         <div className="bg-white rounded-2xl shadow-lg p-8">
           {registered && (
-            <div className="mb-6 p-4 bg-green-50 border border-green-200 text-green-700 rounded-lg text-sm">
+            <div className="mb-6 p-4 bg-green-50 border border-green-200 text-green-700 rounded-lg text-sm" data-testid="login-success">
               Compte créé avec succès ! Connectez-vous.
             </div>
           )}
 
           {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm" data-testid="login-error">
               {error}
             </div>
           )}
@@ -69,6 +69,7 @@ function LoginForm() {
                 required
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
                 placeholder="jean@exemple.fr"
+                data-testid="input-email"
               />
             </div>
             <div>
@@ -82,12 +83,14 @@ function LoginForm() {
                 required
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
                 placeholder="••••••••"
+                data-testid="input-password"
               />
             </div>
             <button
               type="submit"
               disabled={loading}
               className="w-full py-2.5 text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              data-testid="btn-login"
             >
               {loading ? "Connexion..." : "Se connecter"}
             </button>

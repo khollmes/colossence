@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server";
 
+// NOTE: ce rate limiter in-memory est efficace en développement et sur des
+// serveurs long-running. Sur Vercel (serverless), chaque instance de fonction
+// a sa propre Map — la limite s'applique par instance, pas globalement.
+// Pour une protection robuste en production, migrer vers Upstash Redis
+// avec @upstash/ratelimit (https://github.com/upstash/ratelimit).
+
 interface RateLimitEntry {
   count: number;
   resetAt: number;
@@ -7,7 +13,7 @@ interface RateLimitEntry {
 
 const rateLimitMap = new Map<string, RateLimitEntry>();
 
-// Cleanup stale entries on-demand (serverless-friendly)
+// Cleanup stale entries on-demand
 function cleanupExpired() {
   const now = Date.now();
   for (const [key, entry] of rateLimitMap.entries()) {

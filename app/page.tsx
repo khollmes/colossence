@@ -64,6 +64,7 @@ function Header() {
           onClick={() => setMobileOpen(!mobileOpen)}
           className="md:hidden text-gray-300 hover:text-white"
           aria-label="Menu"
+          data-testid="mobile-menu-button"
         >
           {mobileOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
@@ -77,6 +78,7 @@ function Header() {
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             className="md:hidden overflow-hidden bg-gray-950 border-b border-gray-800"
+            data-testid="mobile-menu"
           >
             <div className="flex flex-col gap-4 px-4 py-6">
               <Link href="/" className="text-gray-300 hover:text-white" onClick={() => setMobileOpen(false)}>
@@ -120,6 +122,7 @@ function Hero() {
           initial="hidden"
           animate="visible"
           className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white leading-tight"
+          data-testid="hero-title"
         >
           Votre secrétariat IA
           <span className="block text-blue-400">pour artisans du dépannage</span>
@@ -146,6 +149,7 @@ function Hero() {
           <Link
             href="/register"
             className="px-8 py-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-lg transition-all hover:scale-105 shadow-lg shadow-blue-600/25"
+            data-testid="cta-register"
           >
             Démarrer l&apos;essai gratuit (1er mois offert)
           </Link>
@@ -324,6 +328,7 @@ function Metiers() {
               key={metier.label}
               variants={fadeUp}
               className="bg-gray-900/60 border border-gray-800 rounded-2xl p-6 text-center hover:border-blue-500/50 hover:bg-gray-800/50 transition-all group"
+              data-testid="trade-card"
             >
               <div className="w-16 h-16 rounded-full bg-blue-600/20 flex items-center justify-center mx-auto mb-4 group-hover:bg-blue-600/30 transition-colors">
                 <metier.icon className="w-8 h-8 text-blue-400" />
@@ -599,10 +604,12 @@ function FAQ() {
               key={index}
               variants={fadeUp}
               className="bg-gray-900/50 border border-gray-800 rounded-xl overflow-hidden"
+              data-testid="faq-item"
             >
               <button
                 onClick={() => setOpenIndex(openIndex === index ? null : index)}
                 className="w-full flex items-center justify-between p-5 text-left cursor-pointer"
+                data-testid="faq-question"
               >
                 <span className="text-white font-medium pr-4">{faq.question}</span>
                 <ChevronDown
@@ -620,7 +627,7 @@ function FAQ() {
                     transition={{ duration: 0.3 }}
                     className="overflow-hidden"
                   >
-                    <p className="px-5 pb-5 text-gray-400">{faq.answer}</p>
+                    <p className="px-5 pb-5 text-gray-400" data-testid="faq-answer">{faq.answer}</p>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -669,17 +676,17 @@ function Footer() {
             <h4 className="text-white font-semibold mb-4">Légal</h4>
             <ul className="space-y-2">
               <li>
-                <Link href="/mentions-legales" className="text-gray-400 hover:text-white text-sm transition-colors">
+                <Link href="/mentions-legales" className="text-gray-400 hover:text-white text-sm transition-colors" data-testid="footer-mentions">
                   Mentions légales
                 </Link>
               </li>
               <li>
-                <Link href="/cgv" className="text-gray-400 hover:text-white text-sm transition-colors">
+                <Link href="/cgv" className="text-gray-400 hover:text-white text-sm transition-colors" data-testid="footer-cgv">
                   CGV
                 </Link>
               </li>
               <li>
-                <Link href="/confidentialite" className="text-gray-400 hover:text-white text-sm transition-colors">
+                <Link href="/confidentialite" className="text-gray-400 hover:text-white text-sm transition-colors" data-testid="footer-confidentialite">
                   Politique de confidentialité
                 </Link>
               </li>

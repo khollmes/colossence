@@ -126,17 +126,18 @@ export default function SecretaryPage() {
         </div>
 
         {error && (
-          <p className="text-red-600 text-sm">{error}</p>
+          <p className="text-red-600 text-sm" data-testid="secretary-error">{error}</p>
         )}
 
         {saved && (
-          <p className="text-green-600 text-sm">✅ Configuration sauvegardée avec succès</p>
+          <p className="text-green-600 text-sm" data-testid="secretary-success">✅ Configuration sauvegardée avec succès</p>
         )}
 
         <button
           type="submit"
           disabled={loading}
           className="px-5 py-2.5 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 cursor-pointer"
+          data-testid="btn-save-secretary"
         >
           {loading ? "Enregistrement..." : "Enregistrer"}
         </button>

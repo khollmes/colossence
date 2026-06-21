@@ -45,7 +45,7 @@ export default function PricingPage() {
         {/* Pricing cards */}
         <div className="grid md:grid-cols-2 gap-8">
           {/* Formule Mensuelle */}
-          <div className="relative bg-white rounded-2xl shadow-lg border border-gray-200 p-8 flex flex-col">
+          <div className="relative bg-white rounded-2xl shadow-lg border border-gray-200 p-8 flex flex-col" data-testid="plan-mensuel">
             <div className="mb-6">
               <h2 className="text-2xl font-bold text-gray-900">Mensuel</h2>
               <p className="text-gray-500 mt-1">Flexibilité maximale</p>
@@ -87,13 +87,14 @@ export default function PricingPage() {
               onClick={() => handleCheckout("MENSUEL")}
               disabled={loading !== null}
               className="w-full py-3 px-6 rounded-xl font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              data-testid="btn-subscribe-mensuel"
             >
               {loading === "MENSUEL" ? "Redirection..." : "Démarrer l'essai gratuit"}
             </button>
           </div>
 
           {/* Formule Annuelle */}
-          <div className="relative bg-white rounded-2xl shadow-lg border-2 border-indigo-600 p-8 flex flex-col">
+          <div className="relative bg-white rounded-2xl shadow-lg border-2 border-indigo-600 p-8 flex flex-col" data-testid="plan-annuel">
             <div className="absolute -top-4 left-1/2 -translate-x-1/2">
               <span className="bg-indigo-600 text-white text-sm font-semibold px-4 py-1 rounded-full">
                 Économisez 1000€/an
@@ -142,6 +143,7 @@ export default function PricingPage() {
               onClick={() => handleCheckout("ANNUEL")}
               disabled={loading !== null}
               className="w-full py-3 px-6 rounded-xl font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              data-testid="btn-subscribe-annuel"
             >
               {loading === "ANNUEL" ? "Redirection..." : "Démarrer l'essai gratuit"}
             </button>

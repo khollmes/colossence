@@ -1,0 +1,84 @@
+name: Tests E2E Playwright
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  e2e:
+    name: Tests E2E (${{ matrix.project }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # En CI, on lance Chromium uniquement pour la rapidité
+        # Ajouter firefox et webkit si nécessaire
+        project: [chromium]
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: colossence
+          POSTGRES_PASSWORD: colossence_test
+          POSTGRES_DB: colossence_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    env:
+      DATABASE_URL: postgresql://colossence:colossence_test@localhost:5432/colossence_test
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET || 'ci-test-secret-32-chars-minimum!!' }}
+      STRIPE_SECRET_KEY: ${{ secrets.STRIPE_TEST_SECRET_KEY }}
+      STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_TEST_WEBHOOK_SECRET }}
+      STRIPE_PRICE_MENSUEL: ${{ secrets.STRIPE_TEST_PRICE_MENSUEL }}
+      STRIPE_PRICE_ANNUEL: ${{ secrets.STRIPE_TEST_PRICE_ANNUEL }}
+      EXTERNAL_SERVER_URL: http://localhost:9999/mock-external
+      EXTERNAL_SERVER_API_KEY: ci-test-external-api-key
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Installer les dépendances
+        run: npm ci --legacy-peer-deps
+
+      - name: Générer le client Prisma
+        run: npx prisma generate
+
+      - name: Appliquer les migrations
+        run: npx prisma migrate deploy
+
+      - name: Seeder la base de données de test
+        run: npm run db:seed
+
+      - name: Installer les navigateurs Playwright
+        run: npx playwright install --with-deps ${{ matrix.project }}
+
+      - name: Lancer les tests E2E
+        run: npx playwright test --project=${{ matrix.project }}
+
+      - name: Uploader le rapport Playwright (en cas d'échec)
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report-${{ matrix.project }}
+          path: |
+            playwright-report/
+            playwright-results/
+          retention-days: 7

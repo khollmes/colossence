@@ -229,13 +229,14 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {error && <p className="text-red-600 text-sm">{error}</p>}
-        {saved && <p className="text-green-600 text-sm">✅ Profil mis à jour avec succès</p>}
+        {error && <p className="text-red-600 text-sm" data-testid="profile-error">{error}</p>}
+        {saved && <p className="text-green-600 text-sm" data-testid="profile-success">✅ Profil mis à jour avec succès</p>}
 
         <button
           type="submit"
           disabled={loading}
           className="px-5 py-2.5 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 cursor-pointer"
+          data-testid="btn-save-profile"
         >
           {loading ? "Enregistrement..." : "Enregistrer"}
         </button>

@@ -15,11 +15,11 @@ import {
 import { signOut } from "next-auth/react";
 
 const navItems = [
-  { href: "/dashboard", label: "Vue d'ensemble", icon: LayoutDashboard },
-  { href: "/dashboard/subscription", label: "Abonnement", icon: CreditCard },
-  { href: "/dashboard/billing", label: "Facturation", icon: Receipt },
-  { href: "/dashboard/secretary", label: "Secrétariat IA", icon: Bot },
-  { href: "/dashboard/profile", label: "Profil", icon: User },
+  { href: "/dashboard", label: "Vue d'ensemble", icon: LayoutDashboard, testid: "nav-overview" },
+  { href: "/dashboard/subscription", label: "Abonnement", icon: CreditCard, testid: "nav-subscription" },
+  { href: "/dashboard/billing", label: "Facturation", icon: Receipt, testid: "nav-billing" },
+  { href: "/dashboard/secretary", label: "Secrétariat IA", icon: Bot, testid: "nav-secretary" },
+  { href: "/dashboard/profile", label: "Profil", icon: User, testid: "nav-profile" },
 ];
 
 export default function DashboardLayout({
@@ -32,7 +32,7 @@ export default function DashboardLayout({
   return (
     <div className="min-h-screen flex bg-gray-50">
       {/* Sidebar */}
-      <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
+      <aside className="w-64 bg-white border-r border-gray-200 flex flex-col" data-testid="sidebar">
         <div className="p-6 border-b border-gray-200">
           <h1 className="text-xl font-bold text-indigo-600">Colossence</h1>
           <p className="text-xs text-gray-500 mt-1">Espace client</p>
@@ -49,6 +49,7 @@ export default function DashboardLayout({
               <Link
                 key={item.href}
                 href={item.href}
+                data-testid={item.testid}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                   isActive
                     ? "bg-indigo-50 text-indigo-700"
@@ -66,6 +67,7 @@ export default function DashboardLayout({
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 w-full transition-colors cursor-pointer"
+            data-testid="btn-logout"
           >
             <LogOut className="w-5 h-5" />
             Déconnexion
