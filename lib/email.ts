@@ -3,16 +3,20 @@ import nodemailer from "nodemailer";
 // Transporter SMTP configuré via les variables d'environnement existantes.
 // Resend accepte les connexions SMTP sur smtp.resend.com:587 avec "resend" comme user
 // et la clé API comme mot de passe — pas besoin du SDK Resend.
+// Strip surrounding quotes that some .env parsers leave in place
+// e.g. EMAIL_SERVER_HOST="smtp.resend.com" → "smtp.resend.com" → smtp.resend.com
+function stripQuotes(value: string | undefined): string {
+  return (value ?? "").replace(/^["']|["']$/g, "");
+}
+
 const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_SERVER_HOST,
-  port: Number(process.env.EMAIL_SERVER_PORT),
-  // Port 587 uses STARTTLS (upgrade after connection), not SSL from the start.
-  // secure: true is for port 465 only.
-  secure: false,
+  host: stripQuotes(process.env.EMAIL_SERVER_HOST),
+  port: Number(stripQuotes(process.env.EMAIL_SERVER_PORT)),
+  secure: false,   // port 587 = STARTTLS, not SSL from the start (that's 465)
   requireTLS: true,
   auth: {
-    user: process.env.EMAIL_SERVER_USER,
-    pass: process.env.EMAIL_SERVER_PASSWORD,
+    user: stripQuotes(process.env.EMAIL_SERVER_USER),
+    pass: stripQuotes(process.env.EMAIL_SERVER_PASSWORD),
   },
 });
 

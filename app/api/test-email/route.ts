@@ -2,9 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { sendEmail } from "@/lib/email";
 
 export async function POST(req: NextRequest) {
-  const pw = process.env.EMAIL_SERVER_PASSWORD ?? "";
-  console.log("[DEBUG] PASSWORD length:", pw.length, "| first 5 chars:", JSON.stringify(pw.substring(0, 5)));
-
   const { to } = await req.json();
 
   if (!to || !to.includes("@")) {
