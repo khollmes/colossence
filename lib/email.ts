@@ -6,6 +6,10 @@ import nodemailer from "nodemailer";
 const transporter = nodemailer.createTransport({
   host: process.env.EMAIL_SERVER_HOST,
   port: Number(process.env.EMAIL_SERVER_PORT),
+  // Port 587 uses STARTTLS (upgrade after connection), not SSL from the start.
+  // secure: true is for port 465 only.
+  secure: false,
+  requireTLS: true,
   auth: {
     user: process.env.EMAIL_SERVER_USER,
     pass: process.env.EMAIL_SERVER_PASSWORD,

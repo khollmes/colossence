@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { sendEmail } from "@/lib/email";
 
 export async function POST(req: NextRequest) {
+  const pw = process.env.EMAIL_SERVER_PASSWORD ?? "";
+  console.log("[DEBUG] PASSWORD length:", pw.length, "| first 5 chars:", JSON.stringify(pw.substring(0, 5)));
+
   const { to } = await req.json();
 
   if (!to || !to.includes("@")) {
@@ -56,7 +59,7 @@ export async function POST(req: NextRequest) {
       {
         success: false,
         error: error instanceof Error ? error.message : "Erreur inconnue",
-        hint: "Vérifiez que RESEND_API_KEY est valide et que l'adresse expéditeur est vérifiée dans le dashboard Resend.",
+        hint: "Vérifiez que EMAIL_SERVER_PASSWORD (votre clé API Resend) est correcte dans .env, et que le domaine expéditeur est vérifié dans le dashboard Resend.",
       },
       { status: 500 }
     );
