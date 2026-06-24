@@ -28,7 +28,7 @@ interface SendEmailOptions {
 
 export async function sendEmail({ to, subject, html }: SendEmailOptions): Promise<void> {
   await transporter.sendMail({
-    from: process.env.EMAIL_FROM,
+    from: stripQuotes(process.env.EMAIL_FROM),
     to,
     subject,
     html,
