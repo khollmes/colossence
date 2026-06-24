@@ -1,10 +1,10 @@
-/**
- * Utilitaire d'envoi d'email pour les notifications de paiement.
- * 
- * TODO: Remplacer le placeholder par Resend, Nodemailer, ou tout autre service.
- * Pour utiliser Resend : npm install resend
- * Pour utiliser Nodemailer : npm install nodemailer
- */
+import { Resend } from "resend";
+
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+// Adresse expéditeur vérifiée dans le dashboard Resend.
+// En développement, Resend permet d'utiliser onboarding@resend.dev sans vérification.
+const FROM_ADDRESS = process.env.RESEND_FROM ?? "Colossence <onboarding@resend.dev>";
 
 interface SendEmailOptions {
   to: string;
@@ -13,22 +13,16 @@ interface SendEmailOptions {
 }
 
 export async function sendEmail({ to, subject, html }: SendEmailOptions): Promise<void> {
-  // ─── Placeholder ──────────────────────────────────────────────────────────────
-  // Remplacez ce bloc par votre intégration email (Resend, Nodemailer, etc.)
-  //
-  // Exemple avec Resend :
-  // import { Resend } from "resend";
-  // const resend = new Resend(process.env.RESEND_API_KEY);
-  // await resend.emails.send({
-  //   from: "Colossence <noreply@colossence.fr>",
-  //   to,
-  //   subject,
-  //   html,
-  // });
+  const { error } = await resend.emails.send({
+    from: FROM_ADDRESS,
+    to,
+    subject,
+    html,
+  });
 
-  console.log(`[EMAIL] Envoi à ${to}`);
-  console.log(`[EMAIL] Sujet: ${subject}`);
-  console.log(`[EMAIL] Contenu: ${html}`);
+  if (error) {
+    throw new Error(`Resend error: ${error.message}`);
+  }
 }
 
 export function buildPaymentFailedEmail(prenom: string, montant: number, relances: number): SendEmailOptions {
