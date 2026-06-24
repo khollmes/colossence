@@ -57,6 +57,11 @@ export async function POST(req: NextRequest) {
         success: false,
         error: error instanceof Error ? error.message : "Erreur inconnue",
         hint: "Vérifiez que EMAIL_SERVER_PASSWORD (votre clé API Resend) est correcte dans .env, et que le domaine expéditeur est vérifié dans le dashboard Resend.",
+        // DEBUG temporaire — montre la valeur exacte lue au runtime (avec guillemets visibles)
+        debug: {
+          fromRaw: JSON.stringify(process.env.EMAIL_FROM),
+          hostRaw: JSON.stringify(process.env.EMAIL_SERVER_HOST),
+        },
       },
       { status: 500 }
     );

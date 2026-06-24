@@ -6,7 +6,7 @@ import { useState } from "react";
 
 type EmailResult =
   | { success: true; sentAt: string; to: string }
-  | { success: false; error: string; hint?: string };
+  | { success: false; error: string; hint?: string; debug?: { fromRaw: string; hostRaw: string } };
 
 type OVHResult =
   | { success: true; ovhResponse: unknown; responseTimeMs: number; payloadSent: unknown }
@@ -110,6 +110,12 @@ function EmailTestSection() {
               <p className="text-red-400 font-semibold">❌ Échec</p>
               <p className="text-red-300/80">{result.error}</p>
               {result.hint && <p className="text-yellow-300/70 text-xs">💡 {result.hint}</p>}
+              {result.debug && (
+                <pre className="bg-gray-900 rounded p-3 text-xs text-gray-400 overflow-auto mt-2">
+{`EMAIL_FROM (brut) = ${result.debug.fromRaw}
+EMAIL_SERVER_HOST (brut) = ${result.debug.hostRaw}`}
+                </pre>
+              )}
             </div>
           )}
         </div>
