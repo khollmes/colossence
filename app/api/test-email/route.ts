@@ -8,12 +8,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, error: "Adresse email invalide." }, { status: 400 });
   }
 
-  if (!process.env.RESEND_API_KEY) {
+  if (!process.env.EMAIL_SERVER_PASSWORD) {
     return NextResponse.json(
       {
         success: false,
-        error: "Variable RESEND_API_KEY non définie.",
-        hint: "Ajoutez RESEND_API_KEY dans votre .env.local (ou Vercel → Environment Variables).",
+        error: "Variable EMAIL_SERVER_PASSWORD non définie.",
+        hint: "Vérifiez votre fichier .env ou les variables d'environnement Vercel.",
       },
       { status: 500 }
     );

@@ -1,10 +1,16 @@
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
-// Adresse expéditeur vérifiée dans le dashboard Resend.
-// En développement, Resend permet d'utiliser onboarding@resend.dev sans vérification.
-const FROM_ADDRESS = process.env.RESEND_FROM ?? "Colossence <onboarding@resend.dev>";
+// Transporter SMTP configuré via les variables d'environnement existantes.
+// Resend accepte les connexions SMTP sur smtp.resend.com:587 avec "resend" comme user
+// et la clé API comme mot de passe — pas besoin du SDK Resend.
+const transporter = nodemailer.createTransport({
+  host: process.env.EMAIL_SERVER_HOST,
+  port: Number(process.env.EMAIL_SERVER_PORT),
+  auth: {
+    user: process.env.EMAIL_SERVER_USER,
+    pass: process.env.EMAIL_SERVER_PASSWORD,
+  },
+});
 
 interface SendEmailOptions {
   to: string;
@@ -13,16 +19,12 @@ interface SendEmailOptions {
 }
 
 export async function sendEmail({ to, subject, html }: SendEmailOptions): Promise<void> {
-  const { error } = await resend.emails.send({
-    from: FROM_ADDRESS,
+  await transporter.sendMail({
+    from: process.env.EMAIL_FROM,
     to,
     subject,
     html,
   });
-
-  if (error) {
-    throw new Error(`Resend error: ${error.message}`);
-  }
 }
 
 export function buildPaymentFailedEmail(prenom: string, montant: number, relances: number): SendEmailOptions {
