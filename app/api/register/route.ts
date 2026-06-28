@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { registerSchema } from "@/lib/validations/register";
 import { checkRateLimit, rateLimitResponse, getClientIp } from "@/lib/rateLimit";
 import { sendVerificationEmail } from "@/lib/verification";
+import { defaultSpecialPricingCreateData } from "@/lib/pricing-defaults";
 
 export async function POST(request: Request) {
   const ip = getClientIp(request);
@@ -60,6 +61,12 @@ export async function POST(request: Request) {
               horaires: "",
               tarifs: "",
               telephoneATransferer: "",
+              // Les 3 lignes de tarif spéciales (nuit, fériés, déplacement), à 0 €.
+              // Elles existent dès l'inscription pour que la page Tarifs puisse
+              // toujours proposer un bouton "Modifier".
+              pricingItems: {
+                create: defaultSpecialPricingCreateData,
+              },
             },
           },
         },

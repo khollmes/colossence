@@ -3,23 +3,44 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  LayoutDashboard,
-  CreditCard,
-  Receipt,
-  Bot,
-  User,
-  LogOut,
-  AlertTriangle,
-} from "lucide-react";
+import { UsersRound, Tag, CalendarClock, Bot, PhoneCall, LogOut, Menu, X, AlertTriangle } from "lucide-react";
 import { signOut } from "next-auth/react";
 
+// Pour l'instant, une seule section du dashboard est construite : la Gestion d'équipe.
+// On ajoutera les autres entrées ICI, au fur et à mesure qu'on créera les pages
+// correspondantes (Tarifs, Horaires, Secrétariat, Historique d'appels, Gestion…).
+// Chaque entrée = { href, label, icon } et tout le reste (état actif, mobile) suit.
 const navItems = [
-  { href: "/dashboard", label: "Vue d'ensemble", icon: LayoutDashboard, testid: "nav-overview" },
-  { href: "/dashboard/subscription", label: "Abonnement", icon: CreditCard, testid: "nav-subscription" },
-  { href: "/dashboard/billing", label: "Facturation", icon: Receipt, testid: "nav-billing" },
-  { href: "/dashboard/secretary", label: "Secrétariat IA", icon: Bot, testid: "nav-secretary" },
-  { href: "/dashboard/profile", label: "Profil", icon: User, testid: "nav-profile" },
+  {
+    href: "/dashboard/equipe",
+    label: "Gestion d'équipe",
+    icon: UsersRound,
+    testid: "nav-equipe",
+  },
+  {
+    href: "/dashboard/tarifs",
+    label: "Tarifs",
+    icon: Tag,
+    testid: "nav-tarifs",
+  },
+  {
+    href: "/dashboard/horaires",
+    label: "Horaires",
+    icon: CalendarClock,
+    testid: "nav-horaires",
+  },
+  {
+    href: "/dashboard/secretariat",
+    label: "Secrétariat IA",
+    icon: Bot,
+    testid: "nav-secretariat",
+  },
+  {
+    href: "/dashboard/appels",
+    label: "Appels",
+    icon: PhoneCall,
+    testid: "nav-appels",
+  },
 ];
 
 export default function DashboardLayout({
@@ -29,68 +50,115 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname();
 
+  // État du menu sur mobile (ouvert / fermé). Sur desktop, la sidebar est toujours visible.
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  // À chaque changement de page, on referme le menu mobile automatiquement.
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
+
   return (
-    <div className="min-h-screen flex bg-gray-50">
-      {/* Sidebar */}
-      <aside className="w-64 bg-white border-r border-gray-200 flex flex-col" data-testid="sidebar">
-        <div className="p-6 border-b border-gray-200">
-          <h1 className="text-xl font-bold text-indigo-600">Colossence</h1>
-          <p className="text-xs text-gray-500 mt-1">Espace client</p>
-        </div>
+    <div className="min-h-screen bg-gray-50">
+      {/* ─── Barre du haut : visible UNIQUEMENT sur mobile (md:hidden) ─── */}
+      <header className="md:hidden sticky top-0 z-30 flex items-center justify-between bg-white border-b border-gray-200 px-4 h-14">
+        <span className="text-lg font-bold text-indigo-600">Colossence</span>
+        <button
+          onClick={() => setMobileOpen(true)}
+          aria-label="Ouvrir le menu"
+          className="p-2 -mr-2 text-gray-700"
+          data-testid="btn-open-menu"
+        >
+          <Menu className="w-6 h-6" />
+        </button>
+      </header>
 
-        <nav className="flex-1 p-4 space-y-1">
-          {navItems.map((item) => {
-            const isActive =
-              pathname === item.href ||
-              (item.href !== "/dashboard" && pathname.startsWith(item.href));
-            const Icon = item.icon;
+      <div className="flex">
+        {/* Voile sombre derrière la sidebar quand le menu mobile est ouvert.
+            Un clic dessus referme le menu. Masqué sur desktop (md:hidden). */}
+        {mobileOpen && (
+          <div
+            className="fixed inset-0 z-30 bg-black/40 md:hidden"
+            onClick={() => setMobileOpen(false)}
+            aria-hidden="true"
+          />
+        )}
 
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                data-testid={item.testid}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                  isActive
-                    ? "bg-indigo-50 text-indigo-700"
-                    : "text-gray-700 hover:bg-gray-100"
-                }`}
-              >
-                <Icon className="w-5 h-5" />
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
+        {/* ─── Sidebar ───
+            - Mobile : positionnée en "fixed", glisse depuis la gauche (translate-x).
+            - Desktop (md+) : redevient "static" et toujours visible (md:translate-x-0). */}
+        <aside
+          data-testid="sidebar"
+          className={`fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-gray-200 flex flex-col transition-transform duration-200 md:static md:translate-x-0 ${
+            mobileOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
+        >
+          <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+            <div>
+              <h1 className="text-xl font-bold text-indigo-600">Colossence</h1>
+              <p className="text-xs text-gray-500 mt-1">Espace client</p>
+            </div>
+            {/* Bouton fermer : mobile uniquement */}
+            <button
+              onClick={() => setMobileOpen(false)}
+              aria-label="Fermer le menu"
+              className="md:hidden p-1 text-gray-500 hover:text-gray-700"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
 
-        <div className="p-4 border-t border-gray-200">
-          <button
-            onClick={() => signOut({ callbackUrl: "/login" })}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 w-full transition-colors cursor-pointer"
-            data-testid="btn-logout"
-          >
-            <LogOut className="w-5 h-5" />
-            Déconnexion
-          </button>
-        </div>
-      </aside>
+          <nav className="flex-1 p-4 space-y-1">
+            {navItems.map((item) => {
+              // Une entrée est "active" si l'URL courante correspond à son href.
+              const isActive =
+                pathname === item.href || pathname.startsWith(item.href);
+              const Icon = item.icon;
 
-      {/* Main content */}
-      <main className="flex-1 flex flex-col min-h-screen">
-        <PastDueBanner />
-        <div className="flex-1 p-8">{children}</div>
-      </main>
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  data-testid={item.testid}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                    isActive
+                      ? "bg-indigo-50 text-indigo-700"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  <Icon className="w-5 h-5" />
+                  {item.label}
+                </Link>
+              );
+            })}
+          </nav>
+
+          <div className="p-4 border-t border-gray-200">
+            <button
+              onClick={() => signOut({ callbackUrl: "/login" })}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 w-full transition-colors cursor-pointer"
+              data-testid="btn-logout"
+            >
+              <LogOut className="w-5 h-5" />
+              Déconnexion
+            </button>
+          </div>
+        </aside>
+
+        {/* ─── Contenu principal ─── */}
+        <main className="flex-1 flex flex-col min-h-screen">
+          <PastDueBanner />
+          <div className="flex-1 p-4 sm:p-8">{children}</div>
+        </main>
+      </div>
     </div>
   );
 }
 
+// Bannière d'alerte affichée si le dernier paiement a échoué (statut PAST_DUE).
+// Conservée du layout précédent : ce n'est pas une entrée de navigation mais une
+// sécurité métier (éviter une coupure de service sans prévenir le client).
 function PastDueBanner() {
-  // This component will be hydrated client-side; it fetches subscription status
-  return <PastDueBannerClient />;
-}
-
-function PastDueBannerClient() {
-  // We use a simple fetch to check status - could be enhanced with SWR/React Query
   const [isPastDue, setIsPastDue] = useState(false);
 
   useEffect(() => {
@@ -120,4 +188,3 @@ function PastDueBannerClient() {
     </div>
   );
 }
-

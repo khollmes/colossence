@@ -42,6 +42,26 @@ enum PaymentType {
   SUBSCRIPTION
 }
 
+// Catégorie d'une ligne de tarif. Permet de distinguer un prix de base d'une
+// majoration ou de frais annexes — utile pour que le secrétariat IA annonce le bon prix.
+enum PricingType {
+  STANDARD          // Tarif de base, en journée
+  NIGHT_SURCHARGE   // Majoration de nuit
+  HOLIDAY_SURCHARGE // Majoration jours fériés / dimanche
+  TRAVEL            // Frais de déplacement
+}
+
+// Résultat d'un appel traité par le secrétariat IA.
+// Enum (et non String) pour garantir au niveau de la base que seules ces 4 valeurs
+// sont possibles — une faute de frappe côté code est impossible car TypeScript
+// refusera toute valeur hors de l'enum à la compilation.
+enum CallOutcome {
+  APPOINTMENT  // Rendez-vous pris
+  MESSAGE      // Message transmis
+  TRANSFERRED  // Appel transféré à un membre de l'équipe
+  MISSED       // Appel sans suite (raccroché, injoignable…)
+}
+
 // ─── Models ───────────────────────────────────────────────────────────────────
 
 model User {
@@ -82,6 +102,42 @@ model BusinessProfile {
   telephoneATransferer String
 
   aiSecretaryConfig AISecretaryConfig?
+
+  // Relation inverse : une entreprise (BusinessProfile) possède plusieurs membres
+  // d'équipe. C'est le côté "1" de la relation 1-N (un BusinessProfile → N TeamMember).
+  // Le côté "N", avec la vraie clé étrangère (businessProfileId), est porté par
+  // TeamMember plus bas. Ce champ ne crée AUCUNE colonne en base : c'est juste un
+  // "raccourci" Prisma pour écrire businessProfile.teamMembers dans ton code.
+  teamMembers       TeamMember[]
+
+  // Relation inverse : une entreprise possède plusieurs lignes de tarif.
+  // Même logique que teamMembers (côté "1" de la relation 1-N).
+  pricingItems      PricingItem[]
+
+  // Relation inverse : les créneaux d'astreinte (qui est de garde, quand).
+  onCallSlots       OnCallSlot[]
+
+  // Heures de nuit de l'entreprise, au format "HH:MM" (voir explication plus bas).
+  // Stockées DIRECTEMENT ici (pas dans une table séparée) pour qu'elles "existent"
+  // toujours dès que l'entreprise existe. Grâce à @default, toute nouvelle entreprise
+  // démarre avec des heures de nuit standard (18:00 → 08:00) que le client ajustera.
+  nightStartTime    String @default("18:00")
+  nightEndTime      String @default("08:00")
+
+  // Email de contact de l'entreprise (peut être différent de l'email de connexion
+  // du gestionnaire stocké sur User). Ex : contact@plomberie-dupont.fr
+  // Optionnel (String?) : null si non renseigné — l'IA utilisera l'email du compte.
+  contactEmail      String?
+
+  // Numéro de téléphone attribué par Colossence à cet abonné pour le secrétariat IA.
+  // C'est le numéro que les clients appellent et qui est intercepté par l'IA.
+  // Optionnel : null tant que le numéro n'a pas été provisionné.
+  aiPhoneNumber     String?
+
+  // Relation inverse : tous les appels reçus par cette entreprise.
+  // Même logique que teamMembers — le côté "N" (avec la vraie clé étrangère) est
+  // dans CallLog. Ce champ ne crée aucune colonne en base.
+  callLogs          CallLog[]
 }
 
 model AISecretaryConfig {
@@ -91,6 +147,164 @@ model AISecretaryConfig {
   consignes         String
   messageAccueil    String
   isActive          Boolean         @default(true)
+}
+
+// Fiche contact d'un membre d'équipe (ex : un employé du serrurier).
+// IMPORTANT : ce n'est PAS un compte de connexion — aucun email, aucun mot de passe.
+// Le gestionnaire (le User propriétaire de l'entreprise) crée et gère ces fiches
+// depuis son tableau de bord. Plus tard, les horaires de chaque membre viendront
+// se rattacher à cette table.
+model TeamMember {
+  id String @id @default(cuid())
+
+  // ─── L'ISOLATION ENTRE CLIENTS SE JOUE ICI ───
+  // Chaque membre appartient à UNE entreprise (BusinessProfile) via cette clé étrangère.
+  // Dans ton code, tu filtreras TOUJOURS les requêtes par businessProfileId, par ex. :
+  //   prisma.teamMember.findMany({ where: { businessProfileId: <celui du client connecté> } })
+  // Conséquence : le client A ne peut JAMAIS voir ni modifier les membres du client B,
+  // car sa requête ne ramène que les lignes portant SON businessProfileId. C'est tout
+  // le principe du "multi-tenant" : une seule table partagée par tous tes clients,
+  // cloisonnée par une colonne de propriété. Sans ce champ, tout le monde verrait tout.
+  businessProfileId String
+  businessProfile   BusinessProfile @relation(fields: [businessProfileId], references: [id], onDelete: Cascade)
+
+  // Identité affichée du membre : juste un prénom et un nom, rien de plus.
+  firstName String
+  lastName  String
+
+  // Numéro au format E.164 : indicatif pays + numéro, sans espaces (ex : "+33612345678").
+  // On le stocke en String et non en nombre : un numéro de téléphone n'est pas une
+  // quantité (le "+" et les éventuels zéros initiaux doivent être conservés tels quels).
+  // Le format E.164 n'est PAS vérifié par la base de données : on le validera côté
+  // application (par ex. avec Zod) avant d'écrire en base.
+  phone String
+
+  // Soft delete : on ne SUPPRIME jamais physiquement une fiche, on la désactive
+  // (isActive = false). Avantage : on garde l'historique (un membre lié à d'anciens
+  // horaires, par ex.) sans casser les données. Tes listes filtreront sur
+  // isActive = true pour n'afficher que les membres actuellement en poste.
+  isActive Boolean @default(true)
+
+  // Relation inverse : les créneaux d'astreinte où ce membre est de garde.
+  onCallSlots OnCallSlot[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Une ligne de tarif d'une prestation proposée par l'entreprise
+// (ex : "Ouverture de porte claquée" à 150 €). Le secrétariat IA pourra s'appuyer
+// dessus pour annoncer les prix aux clients qui appellent.
+model PricingItem {
+  id String @id @default(cuid())
+
+  // ─── Isolation entre clients (même principe que TeamMember) ───
+  // Chaque tarif appartient à UNE entreprise via businessProfileId. Tu filtreras
+  // TOUJOURS tes requêtes par cette colonne pour qu'un client ne puisse jamais
+  // voir ni modifier les tarifs d'un autre.
+  businessProfileId String
+  businessProfile   BusinessProfile @relation(fields: [businessProfileId], references: [id], onDelete: Cascade)
+
+  // Nom de la prestation, affiché au client (ex : "Ouverture de porte claquée").
+  name String
+
+  // ⚠️ Prix stocké en CENTIMES (entier), JAMAIS en euros. 150 € → 15000.
+  // Explication détaillée plus bas. On reconvertit en euros seulement à
+  // l'affichage (price / 100).
+  price Int
+
+  // Catégorie du tarif. @default(STANDARD) : si on ne précise rien à la création,
+  // c'est un tarif de base. (Retire le @default si tu veux forcer un choix explicite.)
+  type PricingType @default(STANDARD)
+
+  // Soft delete : on désactive (isActive = false) au lieu de supprimer la ligne,
+  // exactement comme pour TeamMember.
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Un créneau d'astreinte : "tel membre est de garde tel jour, de telle heure à telle heure".
+// Sert à savoir vers qui transférer un appel reçu en dehors des heures d'ouverture.
+model OnCallSlot {
+  id String @id @default(cuid())
+
+  // Isolation par entreprise (même principe que partout ailleurs).
+  businessProfileId String
+  businessProfile   BusinessProfile @relation(fields: [businessProfileId], references: [id], onDelete: Cascade)
+
+  // Quel membre est de garde sur ce créneau.
+  teamMemberId String
+  teamMember   TeamMember @relation(fields: [teamMemberId], references: [id], onDelete: Cascade)
+
+  // Jour de la semaine, convention JavaScript Date.getDay() :
+  // 0 = dimanche, 1 = lundi, … 6 = samedi. On stocke un Int (et non une date) car
+  // c'est une "semaine type" qui se répète, sans date précise.
+  dayOfWeek Int
+
+  // Bornes horaires au format "HH:MM" sur 24h (ex : "20:00", "23:30"). On utilise
+  // String et non DateTime : on ne veut qu'une heure dans la journée, pas un instant
+  // précis avec une date.
+  startTime String
+  endTime   String
+
+  // Soft delete, comme partout ailleurs : on désactive un créneau au lieu de le
+  // supprimer (isActive = false). Tes requêtes filtreront sur isActive = true.
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Journal de chaque appel traité par le secrétariat IA de l'entreprise.
+// Une ligne = un appel, avec son résultat, sa durée et (optionnellement)
+// la transcription et l'enregistrement audio.
+model CallLog {
+  id                String          @id @default(cuid())
+
+  // ─── Isolation multi-tenant ───────────────────────────────────────────────
+  // Même principe que TeamMember, PricingItem, OnCallSlot : toutes les requêtes
+  // filtreront sur businessProfileId pour qu'un client ne voie jamais les appels
+  // d'un autre client.
+  businessProfileId String
+  businessProfile   BusinessProfile @relation(fields: [businessProfileId], references: [id], onDelete: Cascade)
+
+  // Numéro de l'appelant, au format E.164 si disponible (ex : "+33612345678").
+  // Peut être une chaîne inconnue ("Numéro masqué") si l'appelant a masqué son numéro.
+  callerNumber      String
+
+  // Horodatage exact du début de l'appel (fuseau UTC, converti à l'affichage).
+  startedAt         DateTime
+
+  // Durée en secondes (Int entier, plus simple à additionner et trier que Float).
+  // Exemple : 125 → 2 min 05 s.
+  durationSec       Int
+
+  // Résultat de l'appel. Utilise l'enum CallOutcome pour éviter toute valeur
+  // arbitraire en base — TypeScript refusera une valeur invalide à la compilation.
+  outcome           CallOutcome
+
+  // ─── Transcription (Json optionnel) ──────────────────────────────────────
+  // Stockée en Json (et non en String) car une transcription est naturellement
+  // structurée : elle se compose d'une liste de tours de parole, chacun ayant
+  // un auteur ("AI" ou "CALLER"), un texte, et un horodatage relatif.
+  // Exemple de contenu :
+  //   [
+  //     { "speaker": "AI",     "text": "Bonjour, comment puis-je vous aider ?", "t": 0 },
+  //     { "speaker": "CALLER", "text": "J'ai une fuite d'eau.",                "t": 3 }
+  //   ]
+  // En Json, on peut filtrer, agréger ou passer ce champ directement à une LLM
+  // sans désérialisation supplémentaire. En String, ce serait du JSON-dans-une-String,
+  // moins lisible et impossible à indexer.
+  // Le ? rend le champ optionnel : null si la transcription n'est pas disponible.
+  transcript        Json?
+
+  // URL vers l'enregistrement audio (stocké sur un CDN ou S3), optionnel.
+  // null si l'enregistrement n'a pas été activé ou si l'appel a été manqué.
+  audioUrl          String?
+
+  createdAt         DateTime        @default(now())
 }
 
 model Subscription {

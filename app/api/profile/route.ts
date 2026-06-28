@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { defaultSpecialPricingCreateData } from "@/lib/pricing-defaults";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -85,6 +86,10 @@ export async function PUT(req: NextRequest) {
             horaires: "",
             tarifs: tarifs || "",
             telephoneATransferer: "",
+            // Mêmes 3 lignes spéciales par défaut que lors de l'inscription.
+            pricingItems: {
+              create: defaultSpecialPricingCreateData,
+            },
           },
         });
       }

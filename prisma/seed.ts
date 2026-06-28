@@ -1,6 +1,7 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../generated/prisma/client";
 import bcrypt from "bcrypt";
+import { defaultSpecialPricingCreateData } from "../lib/pricing-defaults";
 
 const connectionString = process.env.DATABASE_URL!;
 const adapter = new PrismaPg({ connectionString });
@@ -36,6 +37,10 @@ async function main() {
               messageAccueil: "Bonjour, bienvenue chez Colossence.",
               isActive: false,
             },
+          },
+          // 3 lignes de tarif spéciales par défaut (nuit, fériés, déplacement).
+          pricingItems: {
+            create: defaultSpecialPricingCreateData,
           },
         },
       },
