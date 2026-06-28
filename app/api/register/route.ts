@@ -5,7 +5,6 @@ import { registerSchema } from "@/lib/validations/register";
 import { checkRateLimit, rateLimitResponse, getClientIp } from "@/lib/rateLimit";
 
 export async function POST(request: Request) {
-  // Rate limiting: 10 requêtes par minute par IP
   const ip = getClientIp(request);
   const { success } = checkRateLimit(`register:${ip}`);
   if (!success) {
@@ -18,16 +17,16 @@ export async function POST(request: Request) {
     const validation = registerSchema.safeParse(body);
     if (!validation.success) {
       return NextResponse.json(
-        { error: "Données invalides", details: validation.error.format() },
+        { error: "Données invalides", details: validation.error.flatten().fieldErrors },
         { status: 400 }
       );
     }
 
     const data = validation.data;
 
-    // Vérifier que l'email n'existe pas déjà
     const existingUser = await prisma.user.findUnique({
       where: { email: data.email },
+      select: { id: true },
     });
 
     if (existingUser) {
@@ -37,12 +36,13 @@ export async function POST(request: Request) {
       );
     }
 
-    // Hash le mot de passe
     const passwordHash = await bcrypt.hash(data.password, 12);
 
-    // Créer User + BusinessProfile + AISecretaryConfig en une transaction
+    // Transaction : User + BusinessProfile créés ensemble ou pas du tout.
+    // Les champs de configuration du secrétariat (horaires, tarifs, zone…)
+    // sont initialisés à "" — ils seront remplis lors de la mise en place.
     const user = await prisma.$transaction(async (tx) => {
-      const newUser = await tx.user.create({
+      return tx.user.create({
         data: {
           prenom: data.prenom,
           nom: data.nom,
@@ -54,44 +54,28 @@ export async function POST(request: Request) {
               nomEntreprise: data.nomEntreprise,
               siret: data.siret,
               metier: data.metier,
-              zoneIntervention: data.zoneIntervention,
-              horaires: data.horaires,
-              tarifs: data.tarifs,
-              telephoneATransferer: data.telephoneATransferer,
-              aiSecretaryConfig: {
-                create: {
-                  consignes: "",
-                  messageAccueil: `Bonjour, vous êtes bien chez ${data.nomEntreprise}. Comment puis-je vous aider ?`,
-                  isActive: true,
-                },
-              },
+              // Champs remplis lors de la mise en place
+              zoneIntervention: "",
+              horaires: "",
+              tarifs: "",
+              telephoneATransferer: "",
             },
           },
         },
-        include: {
-          businessProfile: {
-            include: { aiSecretaryConfig: true },
-          },
-        },
+        select: { id: true, email: true, prenom: true, nom: true },
       });
-
-      return newUser;
     });
 
     return NextResponse.json(
       {
         message: "Compte créé avec succès",
-        user: {
-          id: user.id,
-          email: user.email,
-          prenom: user.prenom,
-          nom: user.nom,
-        },
+        user: { id: user.id, email: user.email, prenom: user.prenom, nom: user.nom },
       },
       { status: 201 }
     );
   } catch (error) {
-    console.error("Erreur lors de l'inscription:", error);
+    // Log détaillé en développement pour diagnostiquer (connexion DB, env vars…)
+    console.error("[register] Erreur:", error instanceof Error ? error.message : error);
     return NextResponse.json(
       { error: "Erreur interne du serveur" },
       { status: 500 }

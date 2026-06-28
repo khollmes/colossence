@@ -3,9 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import PhoneField from "@/components/PhoneField";
-import RioField from "@/components/RioField";
 import { validatePhone } from "@/lib/validation/phone";
-import { validateRio } from "@/lib/validation/rio";
 
 const METIER_OPTIONS = [
   { value: "SERRURIER", label: "Serrurier" },
@@ -20,6 +18,7 @@ export default function RegisterPage() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const [formData, setFormData] = useState({
     prenom: "",
@@ -30,15 +29,7 @@ export default function RegisterPage() {
     nomEntreprise: "",
     siret: "",
     metier: "",
-    zoneIntervention: "",
-    horaires: "",
-    tarifs: "",
-    telephoneATransferer: "",
-    rio: "",
   });
-
-  // Erreurs de validation par champ (injectées depuis nextStep/handleSubmit)
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const updateField = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -62,27 +53,15 @@ export default function RegisterPage() {
       }
     }
     setFieldErrors({});
-    setStep((s) => Math.min(s + 1, 3));
+    setStep(2);
   };
 
   const prevStep = () => {
     setFieldErrors({});
-    setStep((s) => Math.max(s - 1, 1));
+    setStep(1);
   };
 
   const handleSubmit = async () => {
-    // Valide le numéro à transférer et le RIO avant d'envoyer
-    const phoneResult = validatePhone(formData.telephoneATransferer, "FR");
-    const rioResult = validateRio(formData.rio, "FR");
-
-    if (!phoneResult.valid || !rioResult.valid) {
-      setFieldErrors({
-        ...(phoneResult.valid ? {} : { telephoneATransferer: phoneResult.error ?? "Numéro invalide" }),
-        ...(rioResult.valid ? {} : { rio: rioResult.error ?? "Code RIO invalide" }),
-      });
-      return;
-    }
-
     setLoading(true);
     setError("");
 
@@ -113,12 +92,12 @@ export default function RegisterPage() {
       <div className="w-full max-w-lg">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Créer un compte</h1>
-          <p className="mt-2 text-gray-600">Étape {step} sur 3</p>
+          <p className="mt-2 text-gray-600">Étape {step} sur 2</p>
         </div>
 
         {/* Barre de progression */}
         <div className="flex gap-2 mb-8">
-          {[1, 2, 3].map((s) => (
+          {[1, 2].map((s) => (
             <div
               key={s}
               className={`h-2 flex-1 rounded-full transition-colors ${
@@ -182,8 +161,6 @@ export default function RegisterPage() {
                   placeholder="jean@exemple.fr"
                 />
               </div>
-
-              {/* Téléphone avec validation libphonenumber-js */}
               <PhoneField
                 id="telephone"
                 label="Téléphone"
@@ -195,7 +172,6 @@ export default function RegisterPage() {
                 error={fieldErrors.telephone}
                 required
               />
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Mot de passe
@@ -262,81 +238,6 @@ export default function RegisterPage() {
             </div>
           )}
 
-          {/* Étape 3 : Configuration du secrétariat */}
-          {step === 3 && (
-            <div className="space-y-4">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4">
-                Configuration du secrétariat
-              </h2>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Zone d&apos;intervention
-                </label>
-                <input
-                  type="text"
-                  value={formData.zoneIntervention}
-                  onChange={(e) => updateField("zoneIntervention", e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
-                  placeholder="Paris et Île-de-France"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Horaires
-                </label>
-                <input
-                  type="text"
-                  value={formData.horaires}
-                  onChange={(e) => updateField("horaires", e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
-                  placeholder="Lun-Ven 8h-18h"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Tarifs
-                </label>
-                <input
-                  type="text"
-                  value={formData.tarifs}
-                  onChange={(e) => updateField("tarifs", e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
-                  placeholder="Déplacement 30€, intervention à partir de 50€"
-                />
-              </div>
-
-              {/* Numéro à porter + RIO groupés visuellement */}
-              <div className="pt-2 border-t border-gray-100 space-y-4">
-                <p className="text-xs text-gray-500">
-                  Renseignez le numéro que vous souhaitez transférer au secrétariat,
-                  ainsi que le code RIO associé.
-                </p>
-
-                <PhoneField
-                  id="telephoneATransferer"
-                  label="Téléphone à transférer"
-                  value={formData.telephoneATransferer}
-                  onChange={(v) => {
-                    updateField("telephoneATransferer", v);
-                    clearFieldError("telephoneATransferer");
-                  }}
-                  error={fieldErrors.telephoneATransferer}
-                  required
-                />
-
-                <RioField
-                  id="rio"
-                  value={formData.rio}
-                  onChange={(v) => {
-                    updateField("rio", v);
-                    clearFieldError("rio");
-                  }}
-                  error={fieldErrors.rio}
-                />
-              </div>
-            </div>
-          )}
-
           {/* Navigation */}
           <div className="mt-8 flex justify-between">
             {step > 1 ? (
@@ -351,7 +252,7 @@ export default function RegisterPage() {
               <div />
             )}
 
-            {step < 3 ? (
+            {step < 2 ? (
               <button
                 onClick={nextStep}
                 className="px-6 py-2.5 text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition font-medium"

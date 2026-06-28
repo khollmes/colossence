@@ -9,10 +9,8 @@ export const registerSchema = z.object({
   nomEntreprise: z.string().min(1, "Le nom d'entreprise est requis"),
   siret: z.string().min(14, "Le SIRET doit contenir 14 chiffres").max(14),
   metier: z.enum(["SERRURIER", "PLOMBIER", "ELECTRICIEN", "GARAGE", "CHAUFFAGISTE"]),
-  zoneIntervention: z.string().min(1, "La zone d'intervention est requise"),
-  horaires: z.string().min(1, "Les horaires sont requis"),
-  tarifs: z.string().min(1, "Les tarifs sont requis"),
-  telephoneATransferer: z.string().min(1, "Le téléphone à transférer est requis"),
+  // Les champs de configuration du secrétariat sont collectés lors de la mise en place,
+  // pas à l'inscription. Ils sont stockés vides en base et complétés plus tard.
 });
 
 export type RegisterInput = z.infer<typeof registerSchema>;
