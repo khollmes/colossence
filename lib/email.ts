@@ -1,10 +1,10 @@
 import nodemailer from "nodemailer";
+import { render } from "@react-email/render";
+import type { ReactElement } from "react";
 
-// Transporter SMTP configuré via les variables d'environnement existantes.
-// Resend accepte les connexions SMTP sur smtp.resend.com:587 avec "resend" comme user
-// et la clé API comme mot de passe — pas besoin du SDK Resend.
-// Strip surrounding quotes that some .env parsers leave in place
-// e.g. EMAIL_SERVER_HOST="smtp.resend.com" → "smtp.resend.com" → smtp.resend.com
+// Retire les guillemets entourant une valeur de variable d'environnement.
+// Nécessaire car certains hébergeurs (Vercel, OVH) conservent les guillemets
+// présents dans le fichier .env : "smtp.resend.com" → smtp.resend.com
 function stripQuotes(value: string | undefined): string {
   return (value ?? "").replace(/^["']|["']$/g, "");
 }
@@ -12,7 +12,7 @@ function stripQuotes(value: string | undefined): string {
 const transporter = nodemailer.createTransport({
   host: stripQuotes(process.env.EMAIL_SERVER_HOST),
   port: Number(stripQuotes(process.env.EMAIL_SERVER_PORT)),
-  secure: false,   // port 587 = STARTTLS, not SSL from the start (that's 465)
+  secure: false,    // port 587 = STARTTLS (upgrade après connexion), pas SSL direct
   requireTLS: true,
   auth: {
     user: stripQuotes(process.env.EMAIL_SERVER_USER),
@@ -23,21 +23,28 @@ const transporter = nodemailer.createTransport({
 interface SendEmailOptions {
   to: string;
   subject: string;
-  html: string;
+  // Accepte soit un composant React Email, soit du HTML brut.
+  // Priorité au composant React s'il est fourni.
+  react?: ReactElement;
+  html?: string;
 }
 
-export async function sendEmail({ to, subject, html }: SendEmailOptions): Promise<void> {
+export async function sendEmail({ to, subject, react, html }: SendEmailOptions): Promise<void> {
+  // Si un composant React est fourni, on le compile en HTML avec React Email.
+  // render() transforme le JSX en une chaîne HTML compatible email (inline CSS, etc.)
+  const htmlBody = react ? await render(react) : html;
+
   await transporter.sendMail({
     from: stripQuotes(process.env.EMAIL_FROM),
     to,
     subject,
-    html,
+    html: htmlBody,
   });
 }
 
-export function buildPaymentFailedEmail(prenom: string, montant: number, relances: number): SendEmailOptions {
+export function buildPaymentFailedEmail(prenom: string, montant: number, relances: number): Omit<SendEmailOptions, "react"> {
   return {
-    to: "", // sera rempli par l'appelant
+    to: "",
     subject: `[Colossence] Échec de paiement - Action requise`,
     html: `
       <h2>Bonjour ${prenom},</h2>

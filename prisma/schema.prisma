@@ -55,11 +55,18 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  businessProfile BusinessProfile?
-  subscriptions   Subscription[]
-  payments        Payment[]
-  failedPayments  FailedPayment[]
-  logs            Log[]
+  // DateTime? plutôt que Boolean pour deux raisons :
+  // 1. null = pas encore vérifié, une date = vérifié (pas besoin d'un champ séparé)
+  // 2. On sait QUAND l'email a été vérifié, utile pour les audits et la conformité RGPD
+  // C'est aussi la convention de NextAuth — si vous l'intégrez plus tard, ça sera compatible
+  emailVerified DateTime?
+
+  businessProfile     BusinessProfile?
+  subscriptions       Subscription[]
+  payments            Payment[]
+  failedPayments      FailedPayment[]
+  logs                Log[]
+  verificationTokens  VerificationToken[]
 }
 
 model BusinessProfile {
@@ -127,5 +134,25 @@ model Log {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   action    String
   details   Json?
+  createdAt DateTime @default(now())
+}
+
+// Tokens envoyés par email pour vérifier l'adresse d'un utilisateur.
+// Flux : inscription → génération token → email avec lien → clic → emailVerified rempli → token supprimé
+model VerificationToken {
+  id        String   @id @default(cuid())
+
+  // Le token aléatoire inclus dans le lien envoyé par email (ex: /verify?token=abc123)
+  // Unique pour qu'on puisse le retrouver directement en base sans connaître l'userId
+  token     String   @unique
+
+  // Lien vers l'utilisateur concerné
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Date limite de validité — après cette date, le lien est refusé même si le token existe
+  // Typiquement now() + 24h au moment de la création
+  expiresAt DateTime
+
   createdAt DateTime @default(now())
 }

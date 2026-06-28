@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import PhoneField from "@/components/PhoneField";
+import { validatePhone } from "@/lib/validation/phone";
 
 interface ProfileData {
   prenom: string;
@@ -29,6 +31,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
+  const [phoneError, setPhoneError] = useState<string | undefined>();
 
   useEffect(() => {
     fetch("/api/profile")
@@ -53,6 +56,15 @@ export default function ProfilePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Valide le téléphone avant d'envoyer au serveur
+    const phoneResult = validatePhone(form.telephone, "FR");
+    if (form.telephone && !phoneResult.valid) {
+      setPhoneError(phoneResult.error ?? "Numéro invalide");
+      return;
+    }
+    setPhoneError(undefined);
+
     setLoading(true);
     setSaved(false);
     setError("");
@@ -136,18 +148,16 @@ export default function ProfilePage() {
             />
           </div>
 
-          <div>
-            <label htmlFor="telephone" className="block text-sm font-medium text-gray-700 mb-1">
-              Téléphone
-            </label>
-            <input
-              id="telephone"
-              type="tel"
-              value={form.telephone}
-              onChange={(e) => setForm({ ...form, telephone: e.target.value })}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            />
-          </div>
+          <PhoneField
+            id="telephone"
+            label="Téléphone"
+            value={form.telephone}
+            onChange={(v) => {
+              setForm({ ...form, telephone: v });
+              setPhoneError(undefined);
+            }}
+            error={phoneError}
+          />
         </div>
 
         {/* Informations entreprise */}
