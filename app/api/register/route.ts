@@ -3,6 +3,7 @@ import bcrypt from "bcrypt";
 import prisma from "@/lib/prisma";
 import { registerSchema } from "@/lib/validations/register";
 import { checkRateLimit, rateLimitResponse, getClientIp } from "@/lib/rateLimit";
+import { sendVerificationEmail } from "@/lib/verification";
 
 export async function POST(request: Request) {
   const ip = getClientIp(request);
@@ -66,9 +67,18 @@ export async function POST(request: Request) {
       });
     });
 
+    // Envoi de l'email APRÈS la transaction — une panne SMTP ne doit pas
+    // annuler la création du compte. Si l'envoi échoue, l'utilisateur peut
+    // redemander un email depuis la page de connexion.
+    try {
+      await sendVerificationEmail(user);
+    } catch (emailError) {
+      console.error("[register] Email de vérification non envoyé:", emailError);
+    }
+
     return NextResponse.json(
       {
-        message: "Compte créé avec succès",
+        message: "Compte créé. Vérifiez votre email pour activer votre accès.",
         user: { id: user.id, email: user.email, prenom: user.prenom, nom: user.nom },
       },
       { status: 201 }

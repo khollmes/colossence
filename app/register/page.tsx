@@ -26,6 +26,7 @@ export default function RegisterPage() {
     email: "",
     telephone: "",
     password: "",
+    confirmPassword: "",
     nomEntreprise: "",
     siret: "",
     metier: "",
@@ -43,12 +44,28 @@ export default function RegisterPage() {
     });
   };
 
-  // Valide le téléphone perso avant de passer à l'étape 2
+  // Valide téléphone et correspondance des mots de passe avant de passer à l'étape 2
   const nextStep = () => {
     if (step === 1) {
-      const result = validatePhone(formData.telephone, "FR");
-      if (!result.valid) {
-        setFieldErrors({ telephone: result.error ?? "Numéro invalide" });
+      const newErrors: Record<string, string> = {};
+
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+        newErrors.email = "Adresse e-mail invalide";
+      }
+
+      const phoneResult = validatePhone(formData.telephone, "FR");
+      if (!phoneResult.valid) {
+        newErrors.telephone = phoneResult.error ?? "Numéro invalide";
+      }
+
+      if (!formData.password) {
+        newErrors.password = "Le mot de passe est requis";
+      } else if (formData.password !== formData.confirmPassword) {
+        newErrors.confirmPassword = "Les mots de passe ne correspondent pas";
+      }
+
+      if (Object.keys(newErrors).length > 0) {
+        setFieldErrors(newErrors);
         return;
       }
     }
@@ -66,10 +83,13 @@ export default function RegisterPage() {
     setError("");
 
     try {
+      // On exclut confirmPassword : l'API n'en a pas besoin et la validation
+      // côté serveur rejetterait un champ inconnu du schéma Zod.
+      const { confirmPassword: _, ...payload } = formData;
       const res = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
@@ -156,10 +176,18 @@ export default function RegisterPage() {
                 <input
                   type="email"
                   value={formData.email}
-                  onChange={(e) => updateField("email", e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
+                  onChange={(e) => {
+                    updateField("email", e.target.value);
+                    clearFieldError("email");
+                  }}
+                  className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition ${
+                    fieldErrors.email ? "border-red-400 bg-red-50" : "border-gray-300"
+                  }`}
                   placeholder="jean@exemple.fr"
                 />
+                {fieldErrors.email && (
+                  <p className="mt-1.5 text-sm text-red-600">⚠ {fieldErrors.email}</p>
+                )}
               </div>
               <PhoneField
                 id="telephone"
@@ -179,10 +207,39 @@ export default function RegisterPage() {
                 <input
                   type="password"
                   value={formData.password}
-                  onChange={(e) => updateField("password", e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
+                  onChange={(e) => {
+                    updateField("password", e.target.value);
+                    clearFieldError("password");
+                    clearFieldError("confirmPassword");
+                  }}
+                  className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition ${
+                    fieldErrors.password ? "border-red-400 bg-red-50" : "border-gray-300"
+                  }`}
                   placeholder="••••••••"
                 />
+                {fieldErrors.password && (
+                  <p className="mt-1.5 text-sm text-red-600">⚠ {fieldErrors.password}</p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Confirmer le mot de passe
+                </label>
+                <input
+                  type="password"
+                  value={formData.confirmPassword}
+                  onChange={(e) => {
+                    updateField("confirmPassword", e.target.value);
+                    clearFieldError("confirmPassword");
+                  }}
+                  className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition ${
+                    fieldErrors.confirmPassword ? "border-red-400 bg-red-50" : "border-gray-300"
+                  }`}
+                  placeholder="••••••••"
+                />
+                {fieldErrors.confirmPassword && (
+                  <p className="mt-1.5 text-sm text-red-600">⚠ {fieldErrors.confirmPassword}</p>
+                )}
               </div>
             </div>
           )}
