@@ -3,6 +3,20 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcrypt";
 import prisma from "@/lib/prisma";
 
+// Sur les previews Vercel, NEXTAUTH_URL pointe vers le domaine de production
+// alors que la requête arrive sur une URL *.vercel.app différente.
+// La validation CSRF de NextAuth échoue car les domaines ne correspondent pas.
+//
+// Vercel injecte automatiquement :
+//   - VERCEL_ENV : "production" | "preview" | "development"
+//   - VERCEL_URL : l'URL exacte du déploiement (sans https://)
+//
+// On écrase NEXTAUTH_URL uniquement sur les previews pour corriger le CSRF.
+// La production reste inchangée (NEXTAUTH_URL = https://colossence.com).
+if (process.env.VERCEL_ENV === "preview" && process.env.VERCEL_URL) {
+  process.env.NEXTAUTH_URL = `https://${process.env.VERCEL_URL}`;
+}
+
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({

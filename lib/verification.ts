@@ -77,7 +77,12 @@ export async function sendVerificationEmail(user: UserForVerification): Promise<
   // Le préfixe NEXT_PUBLIC_ rend la variable accessible dans le navigateur aussi,
   // ce qui est utile si on génère des liens côté client un jour.
   // Valeur : https://colossence.com en production, http://localhost:3000 en local.
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  // Priorité : variable explicite > URL Vercel auto-injectée > localhost (dev)
+  // VERCEL_URL est disponible automatiquement sur tous les déploiements Vercel
+  // mais ne contient pas le schéma — il faut ajouter https://
+  const appUrl =
+    process.env.NEXT_PUBLIC_APP_URL ??
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
   const verificationUrl = `${appUrl}/verify-email?token=${token}`;
 
   await sendEmail({
