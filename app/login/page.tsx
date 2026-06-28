@@ -95,17 +95,22 @@ function LoginForm() {
               {loading ? "Connexion..." : "Se connecter"}
             </button>
           </form>
-        </div>
 
-        <p className="text-center mt-6 text-sm text-gray-600">
-          Pas encore de compte ?{" "}
+          {/* Séparateur visuel entre connexion et inscription */}
+          <div className="flex items-center gap-3 my-6">
+            <div className="flex-1 h-px bg-gray-200" />
+            <span className="text-xs text-gray-400 font-medium">ou</span>
+            <div className="flex-1 h-px bg-gray-200" />
+          </div>
+
           <a
             href="/register"
-            className="text-indigo-600 hover:underline font-medium"
+            className="w-full py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-medium text-sm text-center block"
+            data-testid="btn-register"
           >
             Créer un compte
           </a>
-        </p>
+        </div>
       </div>
     </div>
   );

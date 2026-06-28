@@ -17,13 +17,16 @@ export const signupSchema = z.object({
 
   nomEntreprise: z.string().min(1, "Le nom de l'entreprise est requis"),
 
-  // z.string().refine() permet d'utiliser notre propre logique de validation (Luhn)
-  // plutôt qu'une simple regex. Le deuxième argument retourne le message d'erreur
-  // renvoyé par validateSiret, pour éviter de dupliquer les messages.
-  siret: z.string().refine(
-    (v) => validateSiret(v).valid,
-    (v) => ({ message: validateSiret(v).error ?? "Numéro SIRET invalide" })
-  ),
+  // superRefine() est nécessaire en Zod v4 pour les messages d'erreur dynamiques.
+  // refine() n'accepte qu'un message statique (string) — pas une fonction.
+  // superRefine() donne accès à ctx.addIssue() pour construire le message
+  // à partir du résultat de validateSiret (qui inclut le détail de l'erreur Luhn).
+  siret: z.string().superRefine((v, ctx) => {
+    const result = validateSiret(v);
+    if (!result.valid) {
+      ctx.addIssue({ code: "custom", message: result.error ?? "Numéro SIRET invalide" });
+    }
+  }),
 
   email: z.email("Adresse e-mail invalide"),
 
@@ -35,12 +38,13 @@ export const signupSchema = z.object({
     .refine((v) => /[A-Z]/.test(v), "Le mot de passe doit contenir au moins une majuscule")
     .refine((v) => /\d/.test(v), "Le mot de passe doit contenir au moins un chiffre"),
 
-  // libphonenumber-js connaît les règles de chaque opérateur (longueur, préfixes…)
-  // La regex seule ne suffirait pas à valider un numéro FR correctement.
-  telephone: z.string().refine(
-    (v) => validatePhone(v, "FR").valid,
-    (v) => ({ message: validatePhone(v, "FR").error ?? "Numéro de téléphone invalide" })
-  ),
+  // Même logique : superRefine pour récupérer le message précis de libphonenumber-js.
+  telephone: z.string().superRefine((v, ctx) => {
+    const result = validatePhone(v, "FR");
+    if (!result.valid) {
+      ctx.addIssue({ code: "custom", message: result.error ?? "Numéro de téléphone invalide" });
+    }
+  }),
 
   // Le RIO n'est nécessaire qu'à l'activation de la ligne — optionnel à l'inscription.
   // Il sera demandé et stocké lors du flux de portabilité (à implémenter).
