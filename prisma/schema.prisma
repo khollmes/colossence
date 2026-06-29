@@ -134,6 +134,12 @@ model BusinessProfile {
   // Optionnel : null tant que le numéro n'a pas été provisionné.
   aiPhoneNumber     String?
 
+  // Numéro de secours au format E.164 (ex : "+33612345678") appelé automatiquement
+  // quand aucun membre d'équipe n'est de garde sur le créneau de l'appel entrant.
+  // Garantit qu'un appel n'est jamais perdu faute de destinataire.
+  // Optionnel : null si aucun numéro de secours n'est configuré.
+  fallbackPhoneNumber String?
+
   // Relation inverse : tous les appels reçus par cette entreprise.
   // Même logique que teamMembers — le côté "N" (avec la vraie clé étrangère) est
   // dans CallLog. Ce champ ne crée aucune colonne en base.

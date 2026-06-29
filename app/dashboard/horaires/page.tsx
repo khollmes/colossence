@@ -14,7 +14,6 @@ import {
   CheckCircle2,
   Moon,
   Trash2,
-  X,
   Users,
 } from "lucide-react";
 
@@ -138,14 +137,9 @@ export default function HorairesPage() {
   const [nightEndInput, setNightEndInput] = useState("08:00");
   const [savingNight, setSavingNight] = useState(false);
 
-  // ── Modale de création (après un glissement sur la grille) ──
-  const [pendingSelection, setPendingSelection] = useState<{
-    start: Date;
-    end: Date;
-  } | null>(null);
-  const [selectedMemberId, setSelectedMemberId] = useState("");
+  // ── Membre actif pour la création directe sur la grille ──
+  const [activeMemberId, setActiveMemberId] = useState("");
   const [creating, setCreating] = useState(false);
-  const [createError, setCreateError] = useState<string | null>(null);
 
   // ── Modale de suppression ──
   const [slotToDelete, setSlotToDelete] = useState<Slot | null>(null);
@@ -193,6 +187,13 @@ export default function HorairesPage() {
     const res = await fetch("/api/oncall");
     if (res.ok) setSlots(await res.json());
   }, []);
+
+  // Initialise le membre actif au premier de la liste dès le chargement.
+  useEffect(() => {
+    if (members.length > 0 && !activeMemberId) {
+      setActiveMemberId(members[0].id);
+    }
+  }, [members, activeMemberId]);
 
   // Le message de succès disparaît tout seul.
   useEffect(() => {
@@ -242,13 +243,32 @@ export default function HorairesPage() {
 
   // ─────────────────────── Interactions calendrier ───────────────────────
 
-  // Fin d'un glissement : on retient le jour + les heures, et on ouvre la modale "membre".
-  function handleSelect(info: DateSelectArg) {
-    if (members.length === 0) return; // pas de membre → rien à assigner
-    setPendingSelection({ start: info.start, end: info.end });
-    setSelectedMemberId(members[0].id);
-    setCreateError(null);
-    calendarRef.current?.getApi().unselect(); // enlève la surbrillance de sélection
+  // Fin d'un glissement : crée directement le créneau pour le membre actif.
+  async function handleSelect(info: DateSelectArg) {
+    if (!activeMemberId) return;
+    calendarRef.current?.getApi().unselect();
+    const dayOfWeek = info.start.getDay();
+    const startTime = formatHHMM(info.start);
+    const endTime = formatHHMM(info.end);
+    setCreating(true);
+    try {
+      const res = await fetch("/api/oncall", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ teamMemberId: activeMemberId, dayOfWeek, startTime, endTime }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? "Création impossible.");
+        return;
+      }
+      setSuccess("Créneau d'astreinte ajouté.");
+      await reloadSlots();
+    } catch {
+      setError("Impossible de contacter le serveur.");
+    } finally {
+      setCreating(false);
+    }
   }
 
   // Clic sur un bloc existant → on propose de le supprimer.
@@ -259,37 +279,38 @@ export default function HorairesPage() {
     if (slot) setSlotToDelete(slot);
   }
 
-  // ─────────────────────── Actions réseau ───────────────────────
-  async function handleCreate() {
-    if (!pendingSelection || !selectedMemberId) return;
-    // On NE garde que le jour de la semaine (0-6) et les heures — la date est jetée.
-    const dayOfWeek = pendingSelection.start.getDay();
-    const startTime = formatHHMM(pendingSelection.start);
-    const endTime = formatHHMM(pendingSelection.end);
-
+  // Clic sur l'en-tête d'un jour → créneau 24h (00:00→00:00) pour le membre actif.
+  // startTime === endTime est la convention "journée complète" : la logique d'affichage
+  // détecte end <= start et ajoute 24h, ce qui couvre minuit à minuit le lendemain.
+  async function createFullDaySlot(dayOfWeek: number) {
+    if (!activeMemberId || creating) return;
     setCreating(true);
-    setCreateError(null);
     try {
       const res = await fetch("/api/oncall", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ teamMemberId: selectedMemberId, dayOfWeek, startTime, endTime }),
+        body: JSON.stringify({
+          teamMemberId: activeMemberId,
+          dayOfWeek,
+          startTime: "00:00",
+          endTime: "00:00",
+        }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setCreateError(data.error ?? "Création impossible.");
+        setError(data.error ?? "Création impossible.");
         return;
       }
-      setPendingSelection(null);
-      setSuccess("Créneau d'astreinte ajouté.");
+      setSuccess("Journée complète ajoutée en astreinte.");
       await reloadSlots();
     } catch {
-      setCreateError("Impossible de contacter le serveur.");
+      setError("Impossible de contacter le serveur.");
     } finally {
       setCreating(false);
     }
   }
 
+  // ─────────────────────── Actions réseau ───────────────────────
   async function handleDelete() {
     if (!slotToDelete) return;
     setDeleting(true);
@@ -446,6 +467,32 @@ export default function HorairesPage() {
 
           {/* ─────────────── SECTION 2 : Le calendrier ─────────────── */}
           <section className="bg-white border border-gray-200 rounded-xl shadow-sm p-4">
+            {/* Bandeau : sélection du membre actif avant de dessiner */}
+            {members.length > 0 && (
+              <div className="flex items-center gap-3 mb-4 pb-4 border-b border-gray-100">
+                <span className="text-sm font-medium text-gray-700 whitespace-nowrap">
+                  Dessiner pour :
+                </span>
+                <div className="flex items-center gap-2 flex-1">
+                  <span
+                    className="w-3 h-3 rounded-full shrink-0"
+                    style={{ backgroundColor: colorForMember(activeMemberId, members) }}
+                  />
+                  <select
+                    value={activeMemberId}
+                    onChange={(e) => setActiveMemberId(e.target.value)}
+                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition bg-white text-sm"
+                  >
+                    {members.map((member) => (
+                      <option key={member.id} value={member.id}>
+                        {member.firstName} {member.lastName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {creating && <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />}
+              </div>
+            )}
             {mounted && (
               <FullCalendar
                 ref={calendarRef}
@@ -454,18 +501,37 @@ export default function HorairesPage() {
                 locale={frLocale}
                 firstDay={1} // la semaine commence le lundi
                 headerToolbar={false} // pas de navigation : c'est une semaine TYPE
-                // On n'affiche QUE le nom du jour (pas la date) → effet "semaine type".
-                dayHeaderFormat={{ weekday: "long" }}
+                // En-tête cliquable : nom du jour seul (effet "semaine type") + clic = 24h.
+                dayHeaderContent={(arg) => {
+                  const dow = arg.date.getDay();
+                  const dayName = DAY_NAMES[dow];
+                  const disabled = !activeMemberId || creating;
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => createFullDaySlot(dow)}
+                      disabled={disabled}
+                      title={`Cliquer pour mettre ${dayName} en astreinte complète`}
+                      className={`w-full capitalize font-medium transition-colors ${
+                        disabled
+                          ? "cursor-not-allowed text-gray-400"
+                          : "cursor-pointer hover:text-indigo-600"
+                      }`}
+                    >
+                      {dayName}
+                    </button>
+                  );
+                }}
                 allDaySlot={false}
-                slotMinTime="06:00:00"
+                slotMinTime="00:00:00"
                 slotMaxTime="24:00:00"
                 slotDuration="00:30:00"
                 // Affichage 24h (pas d'AM/PM).
                 slotLabelFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
                 eventTimeFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
                 height="auto"
-                // Sélection possible seulement s'il y a au moins un membre à assigner.
-                selectable={members.length > 0}
+                // Sélection possible seulement si un membre est sélectionné.
+                selectable={activeMemberId !== ""}
                 selectMirror
                 // Un créneau = un seul jour : on refuse une sélection à cheval sur 2 jours.
                 selectAllow={(span) => {
@@ -495,87 +561,6 @@ export default function HorairesPage() {
             </div>
           )}
         </>
-      )}
-
-      {/* ─────────────── Modale : choisir le membre de garde ─────────────── */}
-      {pendingSelection && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={() => !creating && setPendingSelection(null)}
-            aria-hidden="true"
-          />
-          <div
-            role="dialog"
-            aria-modal="true"
-            className="relative bg-white w-full max-w-sm rounded-2xl shadow-xl"
-          >
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-              <h2 className="text-lg font-semibold text-gray-900">Qui est de garde ?</h2>
-              <button
-                onClick={() => setPendingSelection(null)}
-                className="p-1 text-gray-400 hover:text-gray-600"
-                aria-label="Fermer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              {/* Rappel du créneau choisi */}
-              <p className="text-sm text-gray-500">
-                {DAY_NAMES[pendingSelection.start.getDay()]} de{" "}
-                <strong>{formatHHMM(pendingSelection.start)}</strong> à{" "}
-                <strong>{formatHHMM(pendingSelection.end)}</strong>
-              </p>
-
-              {createError && (
-                <div className="flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-3 py-2">
-                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                  {createError}
-                </div>
-              )}
-
-              <div>
-                <label
-                  htmlFor="member-select"
-                  className="block text-sm font-medium text-gray-700 mb-1"
-                >
-                  Membre de l&apos;équipe
-                </label>
-                <select
-                  id="member-select"
-                  value={selectedMemberId}
-                  onChange={(e) => setSelectedMemberId(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition bg-white"
-                >
-                  {members.map((member) => (
-                    <option key={member.id} value={member.id}>
-                      {member.firstName} {member.lastName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-1">
-                <button
-                  onClick={() => setPendingSelection(null)}
-                  disabled={creating}
-                  className="inline-flex items-center justify-center px-4 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
-                >
-                  Annuler
-                </button>
-                <button
-                  onClick={handleCreate}
-                  disabled={creating}
-                  className="inline-flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed text-white text-sm font-medium px-4 py-2.5 rounded-lg transition-colors"
-                >
-                  {creating && <Loader2 className="w-4 h-4 animate-spin" />}
-                  Ajouter
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
       )}
 
       {/* ─────────────── Modale : confirmer la suppression ─────────────── */}
