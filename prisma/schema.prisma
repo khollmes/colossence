@@ -339,6 +339,11 @@ model Subscription {
   trialEndsAt          DateTime?
   currentPeriodEnd     DateTime
   setupFeePaid         Boolean            @default(false)
+
+  // true quand le client a demandé la résiliation : l'abonnement reste actif
+  // jusqu'à currentPeriodEnd puis Stripe le passe en CANCELED. Synchronisé
+  // depuis le webhook customer.subscription.updated (source de vérité).
+  cancelAtPeriodEnd    Boolean            @default(false)
 }
 
 model Payment {

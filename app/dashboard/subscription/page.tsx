@@ -2,8 +2,9 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { redirect } from "next/navigation";
-import PortalButton from "./portal-button";
 import PricingPlans from "@/components/PricingPlans";
+import ManageSubscription from "./manage-subscription";
+import type { PlanEnum } from "@/lib/plans";
 
 export default async function SubscriptionPage() {
   const session = await getServerSession(authOptions);
@@ -84,11 +85,18 @@ export default async function SubscriptionPage() {
             </div>
           </div>
 
-          <div className="pt-4 border-t border-gray-200">
-            <PortalButton />
-          </div>
         </div>
-      ) : (
+      ) : null}
+
+      {subscription && (
+        <ManageSubscription
+          currentPlan={subscription.plan as PlanEnum}
+          currentPeriodEnd={subscription.currentPeriodEnd.toISOString()}
+          cancelAtPeriodEnd={subscription.cancelAtPeriodEnd}
+        />
+      )}
+
+      {!subscription && (
         <div>
           <p className="text-gray-500 mb-8">
             Aucun abonnement actif. Choisissez une offre pour démarrer.

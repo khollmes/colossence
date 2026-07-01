@@ -144,6 +144,7 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
     data: {
       status: newStatus,
       currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+      cancelAtPeriodEnd: subscription.cancel_at_period_end,
       trialEndsAt: subscription.trial_end
         ? new Date(subscription.trial_end * 1000)
         : null,
