@@ -3,13 +3,9 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { UsersRound, Tag, CalendarClock, Bot, PhoneCall, LogOut, Menu, X, AlertTriangle } from "lucide-react";
+import { UsersRound, Tag, CalendarClock, Bot, PhoneCall, CreditCard, Receipt, LogOut, Menu, X, AlertTriangle } from "lucide-react";
 import { signOut } from "next-auth/react";
 
-// Pour l'instant, une seule section du dashboard est construite : la Gestion d'équipe.
-// On ajoutera les autres entrées ICI, au fur et à mesure qu'on créera les pages
-// correspondantes (Tarifs, Horaires, Secrétariat, Historique d'appels, Gestion…).
-// Chaque entrée = { href, label, icon } et tout le reste (état actif, mobile) suit.
 const navItems = [
   {
     href: "/dashboard/equipe",
@@ -40,6 +36,18 @@ const navItems = [
     label: "Appels",
     icon: PhoneCall,
     testid: "nav-appels",
+  },
+  {
+    href: "/dashboard/subscription",
+    label: "Abonnement",
+    icon: CreditCard,
+    testid: "nav-subscription",
+  },
+  {
+    href: "/dashboard/billing",
+    label: "Facturation",
+    icon: Receipt,
+    testid: "nav-billing",
   },
 ];
 
