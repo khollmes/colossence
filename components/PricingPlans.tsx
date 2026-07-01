@@ -27,7 +27,7 @@ const PLANS: Record<Billing, PlanConfig[]> = {
     {
       name: "Standard",
       description:
-        "L'appel sonne d'abord chez la personne de garde. Si pas de réponse, l'IA prend le relais.",
+        "L'appel sonne d'abord chez la personne de garde pendant 4 sec (délai personnalisable). Si pas de réponse, l'IA prend le relais.",
       price: 70,
       unit: "mois",
       planEnum: "STANDARD_MENSUEL",
@@ -42,7 +42,7 @@ const PLANS: Record<Billing, PlanConfig[]> = {
       unit: "mois",
       planEnum: "FULLIA_MENSUEL",
       badge: "1er mois offert",
-      perCallNote: null,
+      perCallNote: "500 appels inclus, puis 0,50 €/appel",
       featured: true,
     },
   ],
@@ -50,7 +50,7 @@ const PLANS: Record<Billing, PlanConfig[]> = {
     {
       name: "Standard",
       description:
-        "L'appel sonne d'abord chez la personne de garde. Si pas de réponse, l'IA prend le relais.",
+        "L'appel sonne d'abord chez la personne de garde pendant 4 sec (délai personnalisable). Si pas de réponse, l'IA prend le relais.",
       price: 700,
       unit: "an",
       planEnum: "STANDARD_ANNUEL",
@@ -65,7 +65,7 @@ const PLANS: Record<Billing, PlanConfig[]> = {
       unit: "an",
       planEnum: "FULLIA_ANNUEL",
       savings: 1000, // 250 × 12 = 3 000 − 2 000
-      perCallNote: null,
+      perCallNote: "500 appels/mois inclus, puis 0,50 €/appel",
       featured: true,
     },
   ],
