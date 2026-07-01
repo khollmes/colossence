@@ -64,7 +64,12 @@ export async function POST(req: NextRequest) {
 
 async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) {
   const userId = session.metadata?.userId;
-  const plan = session.metadata?.plan as "MENSUEL" | "ANNUEL" | undefined;
+  const plan = session.metadata?.plan as
+    | "STANDARD_MENSUEL"
+    | "STANDARD_ANNUEL"
+    | "FULLIA_MENSUEL"
+    | "FULLIA_ANNUEL"
+    | undefined;
 
   if (!userId || !plan) {
     console.error("[Webhook] Métadonnées manquantes dans la session checkout");
@@ -124,7 +129,8 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
     return;
   }
 
-  const statusMap: Record<string, "TRIALING" | "ACTIVE" | "PAST_DUE" | "CANCELED"> = {
+  const statusMap: Record<string, "INCOMPLETE" | "TRIALING" | "ACTIVE" | "PAST_DUE" | "CANCELED"> = {
+    incomplete: "INCOMPLETE",
     trialing: "TRIALING",
     active: "ACTIVE",
     past_due: "PAST_DUE",

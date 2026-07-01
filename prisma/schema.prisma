@@ -26,11 +26,14 @@ enum Metier {
 }
 
 enum Plan {
-  MENSUEL
-  ANNUEL
+  STANDARD_MENSUEL
+  STANDARD_ANNUEL
+  FULLIA_MENSUEL
+  FULLIA_ANNUEL
 }
 
 enum SubscriptionStatus {
+  INCOMPLETE  // Paiement initial en attente (SCA / 3D Secure non finalisé)
   TRIALING
   ACTIVE
   PAST_DUE
@@ -144,6 +147,18 @@ model BusinessProfile {
   // Même logique que teamMembers — le côté "N" (avec la vraie clé étrangère) est
   // dans CallLog. Ce champ ne crée aucune colonne en base.
   callLogs          CallLog[]
+
+  // Délai en secondes avant bascule vers l'agent IA (offre Standard uniquement).
+  // L'appel sonne d'abord chez le pro, puis l'IA prend la main après ce délai.
+  aiHandoffDelaySec    Int     @default(4)
+
+  // Code de portabilité RIO fourni par l'opérateur sortant (France).
+  // Null tant que la portabilité n'est pas initiée.
+  portabilityCode      String?
+
+  // Code pays ISO 3166-1 alpha-2 pour adapter la portabilité selon le marché.
+  // Défaut "FR" — prépare l'extension UK/US sans migration supplémentaire.
+  portabilityCountry   String  @default("FR")
 }
 
 model AISecretaryConfig {

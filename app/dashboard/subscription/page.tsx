@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import PortalButton from "./portal-button";
+import PricingPlans from "@/components/PricingPlans";
 
 export default async function SubscriptionPage() {
   const session = await getServerSession(authOptions);
@@ -16,10 +17,18 @@ export default async function SubscriptionPage() {
   });
 
   const statusLabels: Record<string, { label: string; color: string }> = {
+    INCOMPLETE: { label: "Paiement en attente", color: "bg-yellow-100 text-yellow-800" },
     TRIALING: { label: "Période d'essai", color: "bg-blue-100 text-blue-800" },
     ACTIVE: { label: "Actif", color: "bg-green-100 text-green-800" },
     PAST_DUE: { label: "Paiement en retard", color: "bg-red-100 text-red-800" },
     CANCELED: { label: "Annulé", color: "bg-gray-100 text-gray-800" },
+  };
+
+  const planLabels: Record<string, string> = {
+    STANDARD_MENSUEL: "Standard — 70 €/mois",
+    STANDARD_ANNUEL: "Standard — 700 €/an",
+    FULLIA_MENSUEL: "Full IA — 250 €/mois",
+    FULLIA_ANNUEL: "Full IA — 2 000 €/an",
   };
 
   return (
@@ -32,7 +41,7 @@ export default async function SubscriptionPage() {
             <div>
               <p className="text-sm text-gray-500">Plan actuel</p>
               <p className="text-lg font-semibold text-gray-900">
-                {subscription.plan === "MENSUEL" ? "Mensuel — 250€/mois" : "Annuel — 2000€/an"}
+                {planLabels[subscription.plan] ?? subscription.plan}
               </p>
             </div>
             <span
@@ -80,14 +89,11 @@ export default async function SubscriptionPage() {
           </div>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-          <p className="text-gray-600 mb-4">Aucun abonnement actif.</p>
-          <a
-            href="/pricing"
-            className="inline-block px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors"
-          >
-            Choisir un plan
-          </a>
+        <div>
+          <p className="text-gray-500 mb-8">
+            Aucun abonnement actif. Choisissez une offre pour démarrer.
+          </p>
+          <PricingPlans />
         </div>
       )}
     </div>
